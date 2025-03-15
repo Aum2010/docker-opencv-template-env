@@ -1,0 +1,31 @@
+/* On windows host use vcxsrv to display */
+https://sourceforge.net/projects/vcxsrv/
+ดาวน์โหลดและติดตั้ง VcXsrv
+เปิด XLaunch
+เลือก Multiple windows
+เลือก Start no client
+กด Next แล้ว Finish
+เช็คว่ารันอยู่โดยดูใน Taskbar (มีไอคอน VcXsrv)
+
+/* เปิดการใช้งาน X11 ใน Windows Firewall */
+ไปที่ Windows Defender Firewall
+กด Allow an app through Windows Firewall
+หา VcXsrv windows xserver
+ติ๊กช่อง "Private" และ "Public" เพื่อให้ใช้งานได้
+
+
+/* In devcontainer.json */
+"containerEnv": {
+    "QT_X11_NO_MITSHM": "1",
+    "DISPLAY": "host.docker.internal:0"
+},
+"runArgs": [
+    "--volume=/tmp/.X11-unix:/tmp/.X11-unix",
+    "--env=DISPLAY=host.docker.internal:0",
+    "--privileged"
+]
+
+/* ตั้งค่า Environment Variable */
+Variable name: DISPLAY
+Variable value: host.docker.internal:0
+กด OK แล้วรีสตาร์ท VS Code

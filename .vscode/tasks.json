@@ -1,0 +1,17 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+      {
+        "label": "build my_program",
+        "type": "shell",
+        "command": "g++ -g workspace/main.cpp -o my_program $(pkg-config --cflags --libs opencv4)",
+        "group": {
+          "kind": "build",
+          "isDefault": true
+        },
+        "problemMatcher": ["$gcc"],
+        "detail": "Generated task to compile main.cpp"
+      }
+    ]
+  }
+  

@@ -1,0 +1,22 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+      {
+        "name": "Docker C++ Debug",
+        "type": "cppdbg",
+        "request": "launch",
+        "program": "/workspaces/ws-docker-opencv/my_program",
+        "args": [],
+        "stopAtEntry": false,
+        "cwd": "/workspaces/ws-docker-opencv/workspace/",
+        "environment": [],
+        "externalConsole": false,
+        "MIMode": "gdb",
+        "preLaunchTask": "build my_program",
+        "setupCommands": [
+          { "text": "-enable-pretty-printing", "description": "Enable GDB pretty printing", "ignoreFailures": true }
+        ]
+      }
+    ]
+  }
+  
