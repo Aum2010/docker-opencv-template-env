@@ -4,7 +4,8 @@
       {
         "label": "build my_program",
         "type": "shell",
-        "command": "g++ -g workspace/main.cpp -o my_program $(pkg-config --cflags --libs opencv4)",
+        // "command": "g++ -g workspace/main.cpp -o my_program $(pkg-config --cflags --libs opencv4)",
+        "command": "g++ -g workspace/main.cpp -o my_program -I/usr/local/include/opencv4 -L/usr/local/lib -lopencv_core -lopencv_dnn -lopencv_imgproc -lopencv_imgcodecs -lopencv_highgui",
         "group": {
           "kind": "build",
           "isDefault": true
