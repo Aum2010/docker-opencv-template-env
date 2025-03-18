@@ -1,78 +1,193 @@
-#include <opencv2/opencv.hpp>
-#include <opencv2/dnn.hpp>
 #include <iostream>
+#include <iomanip>
+#include "inference.h"
+#include <filesystem>
+#include <fstream>
+#include <random>
 
-using namespace cv;
-using namespace dnn;
-using namespace std;
+void Detector(YOLO_V8*& p) {
+    std::filesystem::path current_path = std::filesystem::current_path();
+    std::filesystem::path imgs_path = current_path / "images";
+    for (auto& i : std::filesystem::directory_iterator(imgs_path))
+    {
+        if (i.path().extension() == ".jpg" || i.path().extension() == ".png" || i.path().extension() == ".jpeg")
+        {
+            std::string img_path = i.path().string();
+            cv::Mat img = cv::imread(img_path);
+            std::vector<DL_RESULT> res;
+            p->RunSession(img, res);
 
-void drawBoundingBox(Mat &img, const vector<float> &box, float confidence)
-{
-    // สมมติว่าโมเดลให้ค่า (center_x, center_y, width, height)
-    float center_x = box[0] * img.cols;
-    float center_y = box[1] * img.rows;
-    float w = box[2] * img.cols;
-    float h = box[3] * img.rows;
+            for (auto& re : res)
+            {
+                cv::RNG rng(cv::getTickCount());
+                cv::Scalar color(rng.uniform(0, 256), rng.uniform(0, 256), rng.uniform(0, 256));
 
-    // คำนวณ x_min และ y_min
-    int x_min = static_cast<int>(center_x - w / 2);
-    int y_min = static_cast<int>(center_y - h / 2);
-    int x_max = static_cast<int>(center_x + w / 2);
-    int y_max = static_cast<int>(center_y + h / 2);
+                cv::rectangle(img, re.box, color, 3);
 
-    // วาดกรอบสี่เหลี่ยม
-    rectangle(img, Point(x_min, y_min), Point(x_max, y_max), Scalar(0, 255, 0), 2);
+                float confidence = floor(100 * re.confidence) / 100;
+                std::cout << std::fixed << std::setprecision(2);
+                std::string label = p->classes[re.classId] + " " +
+                    std::to_string(confidence).substr(0, std::to_string(confidence).size() - 4);
 
-    // แสดงค่า Confidence
-    string label = format("Conf: %.2f", confidence);
-    putText(img, label, Point(x_min, y_min - 10), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 255, 0), 2);
+                cv::rectangle(
+                    img,
+                    cv::Point(re.box.x, re.box.y - 25),
+                    cv::Point(re.box.x + label.length() * 15, re.box.y),
+                    color,
+                    cv::FILLED
+                );
+
+                cv::putText(
+                    img,
+                    label,
+                    cv::Point(re.box.x, re.box.y - 5),
+                    cv::FONT_HERSHEY_SIMPLEX,
+                    0.75,
+                    cv::Scalar(0, 0, 0),
+                    2
+                );
+
+
+            }
+            std::cout << "Press any key to exit" << std::endl;
+            cv::imshow("Result of Detection", img);
+            cv::waitKey(0);
+            cv::destroyAllWindows();
+        }
+    }
 }
+
+
+void Classifier(YOLO_V8*& p)
+{
+    std::filesystem::path current_path = std::filesystem::current_path();
+    std::filesystem::path imgs_path = current_path;// / "images"
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_int_distribution<int> dis(0, 255);
+    for (auto& i : std::filesystem::directory_iterator(imgs_path))
+    {
+        if (i.path().extension() == ".jpg" || i.path().extension() == ".png")
+        {
+            std::string img_path = i.path().string();
+            //std::cout << img_path << std::endl;
+            cv::Mat img = cv::imread(img_path);
+            std::vector<DL_RESULT> res;
+            char* ret = p->RunSession(img, res);
+
+            float positionY = 50;
+            for (int i = 0; i < res.size(); i++)
+            {
+                int r = dis(gen);
+                int g = dis(gen);
+                int b = dis(gen);
+                cv::putText(img, std::to_string(i) + ":", cv::Point(10, positionY), cv::FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(b, g, r), 2);
+                cv::putText(img, std::to_string(res.at(i).confidence), cv::Point(70, positionY), cv::FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(b, g, r), 2);
+                positionY += 50;
+            }
+
+            cv::imshow("TEST_CLS", img);
+            cv::waitKey(0);
+            cv::destroyAllWindows();
+            //cv::imwrite("E:\\output\\" + std::to_string(k) + ".png", img);
+        }
+
+    }
+}
+
+
+
+int ReadCocoYaml(YOLO_V8*& p) {
+    // Open the YAML file
+    std::ifstream file("coco.yaml");
+    if (!file.is_open())
+    {
+        std::cerr << "Failed to open file" << std::endl;
+        return 1;
+    }
+
+    // Read the file line by line
+    std::string line;
+    std::vector<std::string> lines;
+    while (std::getline(file, line))
+    {
+        lines.push_back(line);
+    }
+
+    // Find the start and end of the names section
+    std::size_t start = 0;
+    std::size_t end = 0;
+    for (std::size_t i = 0; i < lines.size(); i++)
+    {
+        if (lines[i].find("names:") != std::string::npos)
+        {
+            start = i + 1;
+        }
+        else if (start > 0 && lines[i].find(':') == std::string::npos)
+        {
+            end = i;
+            break;
+        }
+    }
+
+    // Extract the names
+    std::vector<std::string> names;
+    for (std::size_t i = start; i < end; i++)
+    {
+        std::stringstream ss(lines[i]);
+        std::string name;
+        std::getline(ss, name, ':'); // Extract the number before the delimiter
+        std::getline(ss, name); // Extract the string after the delimiter
+        names.push_back(name);
+    }
+
+    p->classes = names;
+    return 0;
+}
+
+
+void DetectTest()
+{
+    YOLO_V8* yoloDetector = new YOLO_V8;
+    ReadCocoYaml(yoloDetector);
+    DL_INIT_PARAM params;
+    params.rectConfidenceThreshold = 0.1;
+    params.iouThreshold = 0.5;
+    params.modelPath = "yolov8s.onnx";
+    params.imgSize = { 640, 640 };
+#ifdef USE_CUDA
+    params.cudaEnable = true;
+
+    // GPU FP32 inference
+    params.modelType = YOLO_DETECT_V8;
+    // GPU FP16 inference
+    //Note: change fp16 onnx model
+    //params.modelType = YOLO_DETECT_V8_HALF;
+
+#else
+    // CPU inference
+    params.modelType = YOLO_DETECT_V8;
+    params.cudaEnable = false;
+
+#endif
+    yoloDetector->CreateSession(params);
+    Detector(yoloDetector);
+}
+
+
+void ClsTest()
+{
+    YOLO_V8* yoloDetector = new YOLO_V8;
+    std::string model_path = "cls.onnx";
+    ReadCocoYaml(yoloDetector);
+    DL_INIT_PARAM params{ model_path, YOLO_CLS, {224, 224} };
+    yoloDetector->CreateSession(params);
+    Classifier(yoloDetector);
+}
+
 
 int main()
 {
-    // โหลดโมเดล ONNX
-    Net net = readNetFromONNX("yolov8s.onnx");
-
-    // โหลดภาพ
-    Mat img = imread("image.png");
-    if (img.empty())
-    {
-        cerr << "Error: Image not found!" << endl;
-        return -1;
-    }
-
-    // แปลงภาพเป็น Blob
-    Mat blob;
-    blobFromImage(img, blob, 1.0 / 255.0, Size(640, 640), Scalar(), true, false);
-    // Size inputSize = Size(img.cols, img.rows); // ใช้ขนาดภาพจริง
-    // blobFromImage(img, blob, 1.0 / 255.0, inputSize, Scalar(), true, false);
-
-    // ใส่ blob เข้าโมเดล
-    net.setInput(blob);
-
-    // ทำ Inference
-    Mat output = net.forward();
-
-    // ดึงข้อมูลจาก Output (1 x 84 x 8400)
-    const float *data = reinterpret_cast<float *>(output.data);
-    int numBoxes = output.size[2];
-
-    // วนลูปดึง Bounding Box
-    for (int i = 0; i < numBoxes; i++)
-    {
-        float confidence = data[4]; // ค่าความมั่นใจ
-        if (confidence > 0.5)
-        {                                      // กรองเฉพาะค่าที่มีความมั่นใจสูง
-            vector<float> box(data, data + 4); // (x, y, w, h)
-            // vector<float> box = {data[0] / 640.0, data[1] / 640.0, data[2] / 640.0, data[3] / 640.0};
-            drawBoundingBox(img, box, confidence);
-        }
-        data += 84; // ไปยัง Bounding Box ถัดไป
-    }
-
-    // แสดงภาพที่มี Bounding Box
-    imshow("Detected Objects", img);
-    waitKey(0);
-
-    return 0;
+    DetectTest();
+    // ClsTest();
 }
