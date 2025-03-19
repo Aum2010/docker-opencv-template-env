@@ -50,7 +50,10 @@ void Detector(YOLO_V8*& p) {
 
             }
             std::cout << "Press any key to exit" << std::endl;
-            cv::imshow("Result of Detection", img);
+            // cv::imshow("Result of Detection", img);
+
+            cv::imwrite("output.jpg", img);
+
             cv::waitKey(0);
             cv::destroyAllWindows();
         }
@@ -153,7 +156,7 @@ void DetectTest()
     DL_INIT_PARAM params;
     params.rectConfidenceThreshold = 0.1;
     params.iouThreshold = 0.5;
-    params.modelPath = "yolov8s.onnx";
+    params.modelPath = "yolov8n.onnx";
     params.imgSize = { 640, 640 };
 #ifdef USE_CUDA
     params.cudaEnable = true;
