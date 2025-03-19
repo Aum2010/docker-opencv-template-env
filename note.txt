@@ -29,3 +29,7 @@ https://sourceforge.net/projects/vcxsrv/
 Variable name: DISPLAY
 Variable value: host.docker.internal:0
 กด OK แล้วรีสตาร์ท VS Code
+
+/* Convert Pytorch(.pt) to .onnx */
+model = YOLO(f"{model_name}.pt") 
+model.export(format='onnx', opset = 12, imgsz =[640,640])
